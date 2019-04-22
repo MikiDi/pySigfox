@@ -23,4 +23,4 @@ for device_type in s.device_types_list():
         last_device = device
 
 print("== Last 3 messages from " + last_device['name'] + ":")
-pprint(s.device_messages(last_device, limit=3))
+pprint(s.device_messages(last_device['id'], params={'limit': 3}))

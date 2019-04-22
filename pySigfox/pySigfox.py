@@ -135,26 +135,6 @@ class Sigfox:
             raise
         return out
 
-    def device_messages(self, device, limit=10):
-        """Return array of 10 last messages from specific device.
-
-        :param device: Device object
-        :param limit: how many messages to retrieve - max limit 100
-        :type limit: int
-
-        """
-
-        url = self.api_url + 'devices/' + str(device['id']) + '/messages?limit=' + str(limit)
-        r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
-
-        try:
-            out = json.loads(r.text)['data']
-        except Exception as e:
-            pprint(r.text)
-            raise
-
-        return out
-
     def device_messages_page(self, url):
         """Return array of message from paging URL.
 
@@ -168,5 +148,29 @@ class Sigfox:
         except Exception as e:
             # no more pages
             pass
+
+        return out
+
+    def device_messages(self, device_id, params=None):
+        """Return array of 10 last messages from specific device.
+
+        :param device: Device object
+        :param limit: how many messages to retrieve - max limit 100
+        :type limit: int
+
+        """
+        if params is None:
+            params = {'limit': 10}
+        url = self.api_url + 'devices/' + str(device_id) + '/messages'
+        r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
+
+        try:
+            r_deserialized = r.json()
+            out = r_deserialized['data']
+            if r_deserialized['paging']:
+                out += self.device_messages_page(r_deserialized['paging']['next'])
+        except Exception as e:
+            pprint(r.text)
+            raise
 
         return out
