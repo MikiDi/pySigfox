@@ -10,9 +10,9 @@ class Sigfox:
     def __init__(self, login, password, debug=False):
         if not login or not password:
             raise Exception("Please define login and password when initiating pySigfox class!")
-        self.login    = login
+        self.login = login
         self.password = password
-        self.api_url  = 'https://api.sigfox.com/v2/'
+        self.api_url = 'https://api.sigfox.com/v2/'
         self.debug = debug
 
     def login_test(self):
@@ -28,18 +28,14 @@ class Sigfox:
         """Return list of device types dictionaries
 
         """
-        out = []
         url = self.api_url + 'device-types'
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
-        for device in json.loads(r.text)['data']:
-            out.append(device)
-        return out
+        return r.json()['data']
 
     def device_rename(self, device_id, new_name):
         """Rename specific device
 
         """
-        out = []
         url = self.api_url + 'devices/' + str(device_id)
         if self.debug:
             print("Connecting to " + url)
@@ -49,13 +45,12 @@ class Sigfox:
         """Return information about specific device
 
         """
-        out = []
         url = self.api_url + 'devices/' + str(device_id)
         if self.debug:
             print("Connecting to " + url)
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
         try:
-            return json.loads(r.text)
+            return r.json()
         except Exception as e:
             pprint(r.text)
             raise
@@ -82,12 +77,12 @@ class Sigfox:
         if self.debug:
             print("Adding device " + device['id'] + " to device type " + devicetype['name'])
         to_post = {
-                    "prefix": "api_added-",
-                    "ids": [
-                             { 'id': device['id'], 'pac': device['pac'] },
-                           ],
-                    "productCertificate": str(cert), 
-                  }
+            "prefix": "api_added-",
+            "ids": [
+                {'id': device['id'], 'pac': device['pac']},
+            ],
+            "productCertificate": str(cert),
+        }
         url = self.api_url + "devicetypes/" + devicetype['id'] + '/devices/bulk/create/async'
         if self.debug:
             print("Connecting to " + url)
@@ -95,7 +90,7 @@ class Sigfox:
             pprint(to_post)
         r = requests.post(url,
                           auth=requests.auth.HTTPBasicAuth(self.login, self.password),
-                          json = to_post)
+                          json=to_post)
         if self.debug:
             pprint("Response: " + str(r.text))
         return r.json()
@@ -105,13 +100,13 @@ class Sigfox:
 
         """
         dtype = {
-                  'name': 'test1',
-                  'contractId': 'moire_la_30f0_30f1'
-                }
+            'name': 'test1',
+            'contractId': 'moire_la_30f0_30f1'
+        }
         url = self.api_url + 'devicetypes/create'
         if self.debug:
             print("Connecting to " + url)
-        r = requests.post(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), data = dtype)
+        r = requests.post(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), data=dtype)
         return r
 
     def device_list(self, device_type):
@@ -123,12 +118,14 @@ class Sigfox:
         :rtype: list
 
         """
-        device_type_ids = []
         out = []
-        url = self.api_url + 'devices?deviceTypeId=' + device_type['id']
-        r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
+        params = {
+            'deviceTypeId': device_type['id']
+        }
+        url = self.api_url + 'devices'
+        r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
         try:
-            out.extend(json.loads(r.text)['data'])
+            out += r.json()['data']
         except Exception as e:
             print("Unable to access data from returned RESP API call: " + str(e))
             pprint(r.text)
@@ -141,10 +138,9 @@ class Sigfox:
         """
         out = []
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
-        out.extend(json.loads(r.text)['data'])
+        out += r.json()['data']
         try:
-            json.loads(r.text)['paging']['next']
-            out.extend(self.device_messages_page(json.loads(r.text)['paging']['next']))
+            out += self.device_messages_page(r.json()['paging']['next'])
         except Exception as e:
             # no more pages
             pass
