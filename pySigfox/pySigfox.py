@@ -138,12 +138,16 @@ class Sigfox:
         """
         out = []
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
-        out += r.json()['data']
         try:
-            out += self.device_messages_page(r.json()['paging']['next'])
+            r_deserialized = r.json()
+            out = r_deserialized['data']
+            try:
+                out += self.device_messages_page(r_deserialized['paging']['next'])
+            except KeyError:
+                pass
         except Exception as e:
-            # no more pages
-            pass
+            pprint(r.text)
+            raise
 
         return out
 
@@ -163,8 +167,10 @@ class Sigfox:
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
-            if r_deserialized['paging']:
+            try:
                 out += self.device_messages_page(r_deserialized['paging']['next'])
+            except KeyError:
+                pass
         except Exception as e:
             pprint(r.text)
             raise
