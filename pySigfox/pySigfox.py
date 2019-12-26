@@ -141,6 +141,8 @@ class Sigfox:
         """
         out = []
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
+        if r.status_code == 429:
+            raise Exception('Exceeded Sigfox API rate limit')
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
@@ -168,7 +170,9 @@ class Sigfox:
             params = {'limit': 10}
         url = self.api_url + 'devices/' + str(device_id) + '/messages'
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
-        try:
+        if r.status_code == 429:
+            raise Exception('Exceeded Sigfox API rate limit')
+      try:
             r_deserialized = r.json()
             out = r_deserialized['data']
             try:
