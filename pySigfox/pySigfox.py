@@ -5,6 +5,7 @@ import sys
 import json
 import requests
 from pprint import pprint
+from requests_throttler import BaseThrottler
 
 class Sigfox:
     def __init__(self, login, password, debug=False):
@@ -14,6 +15,7 @@ class Sigfox:
         self.password = password
         self.api_url = 'https://api.sigfox.com/v2/'
         self.debug = debug
+        self.throttler = BaseThrottler(name='base-throttler', delay=1.5)
 
     def login_test(self):
         """Try to login into the  Sigfox backend API - if unauthorized or any other issue raise Exception
@@ -138,6 +140,7 @@ class Sigfox:
         """
         out = []
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
+        self.throttler.submit(r)
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
@@ -162,8 +165,9 @@ class Sigfox:
         if params is None:
             params = {'limit': 10}
         url = self.api_url + 'devices/' + str(device_id) + '/messages'
+        self.throttler.start()
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
-
+        self.throttler.submit(r)
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
@@ -171,6 +175,7 @@ class Sigfox:
                 out += self.device_messages_page(r_deserialized['paging']['next'])
             except KeyError:
                 pass
+            self.throttler.shutdown()
         except Exception as e:
             pprint(r.text)
             raise
