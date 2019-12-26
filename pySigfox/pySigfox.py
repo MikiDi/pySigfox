@@ -172,7 +172,7 @@ class Sigfox:
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
         if r.status_code == 429:
             raise Exception('Exceeded Sigfox API rate limit')
-      try:
+        try:
             r_deserialized = r.json()
             out = r_deserialized['data']
             try:
