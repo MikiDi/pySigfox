@@ -5,7 +5,7 @@ import sys
 import json
 import requests
 from pprint import pprint
-from requests_throttler import BaseThrottler
+from ratelimit import limits, sleep_and_retry
 
 class Sigfox:
     def __init__(self, login, password, debug=False):
@@ -15,7 +15,6 @@ class Sigfox:
         self.password = password
         self.api_url = 'https://api.sigfox.com/v2/'
         self.debug = debug
-        self.throttler = BaseThrottler(name='base-throttler', delay=1.5)
 
     def login_test(self):
         """Try to login into the  Sigfox backend API - if unauthorized or any other issue raise Exception
@@ -134,13 +133,14 @@ class Sigfox:
             raise
         return out
 
+    @sleep_and_retry
+    @limits(calls=1, period=2)
     def device_messages_page(self, url):
         """Return array of message from paging URL.
 
         """
         out = []
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
-        self.throttler.submit(r)
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
@@ -153,7 +153,9 @@ class Sigfox:
             raise
 
         return out
-
+    
+    @sleep_and_retry
+    @limits(calls=1, period=2)
     def device_messages(self, device_id, params=None):
         """Return array of 10 last messages from specific device.
 
@@ -165,9 +167,7 @@ class Sigfox:
         if params is None:
             params = {'limit': 10}
         url = self.api_url + 'devices/' + str(device_id) + '/messages'
-        self.throttler.start()
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
-        self.throttler.submit(r)
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
@@ -175,7 +175,6 @@ class Sigfox:
                 out += self.device_messages_page(r_deserialized['paging']['next'])
             except KeyError:
                 pass
-            self.throttler.shutdown()
         except Exception as e:
             pprint(r.text)
             raise
