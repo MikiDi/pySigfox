@@ -6,6 +6,7 @@ import json
 import requests
 from pprint import pprint
 from ratelimit import limits, sleep_and_retry
+from ratelimit.exception import RateLimitException
 
 class Sigfox:
     def __init__(self, login, password, debug=False):
@@ -134,7 +135,7 @@ class Sigfox:
         return out
 
     @sleep_and_retry
-    @limits(calls=1, period=2)
+    @limits(calls=1, period=5)
     def device_messages_page(self, url):
         """Return array of message from paging URL.
 
@@ -142,7 +143,7 @@ class Sigfox:
         out = []
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password))
         if r.status_code == 429:
-            raise Exception('Exceeded Sigfox API rate limit')
+            raise RateLimitException('Exceeded Sigfox API rate limit')
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
@@ -157,7 +158,7 @@ class Sigfox:
         return out
     
     @sleep_and_retry
-    @limits(calls=1, period=2)
+    @limits(calls=1, period=5)
     def device_messages(self, device_id, params=None):
         """Return array of 10 last messages from specific device.
 
@@ -171,7 +172,7 @@ class Sigfox:
         url = self.api_url + 'devices/' + str(device_id) + '/messages'
         r = requests.get(url, auth=requests.auth.HTTPBasicAuth(self.login, self.password), params=params)
         if r.status_code == 429:
-            raise Exception('Exceeded Sigfox API rate limit')
+            raise RateLimitException('Exceeded Sigfox API rate limit')
         try:
             r_deserialized = r.json()
             out = r_deserialized['data']
